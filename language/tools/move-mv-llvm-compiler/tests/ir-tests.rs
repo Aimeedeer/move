@@ -8,6 +8,8 @@
 //! expected IR.
 
 use std::path::{Path, PathBuf};
+use std::process::Command;
+use anyhow::Context;
 
 pub const TEST_DIR: &str = "tests/testdata";
 
@@ -67,8 +69,11 @@ struct TestPlan {
 }
 
 fn get_test_plan(test_path: &Path) -> TestPlan {
-    let mvir_file = test_path.to_owned();
-    let mvbc_file = mvir_file.with_extension("actual.mv");
+    let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").expect("cargo_manifest_dir");
+    let test_dir = Path::new(&manifest_dir).join(test_path);
+    
+    let mvir_file = test_dir.to_owned();
+    let mvbc_file = mvir_file.with_extension("mv");
     let llir_file = mvir_file.with_extension("actual.ll");
     let llir_file_expected = mvir_file.with_extension("expected.ll");
 
@@ -82,17 +87,42 @@ fn get_test_plan(test_path: &Path) -> TestPlan {
 
 /// Run `move-ir-compiler` to produce Move bytecode, `mvbc_file`.
 fn compile_mvir_to_mvbc(harness_paths: &HarnessPaths, test_plan: &TestPlan) -> anyhow::Result<()> {
-    todo!()
+    let mut cmd = Command::new(harness_paths.move_ir_compiler.to_str().expect("PathBuf"));
+    cmd.arg("-m");
+    cmd.arg(test_plan.mvir_file.to_str().expect("PathBuf"));
+    
+    let output = cmd.output().context("run move-ir-compiler failed")?;
+    if !output.status.success() {
+        anyhow::bail!("move-ir-compiler failed");
+    }
+    
+    Ok(())
 }
 
 /// Run `move-mv-llvm-compiler` to produce LLVM IR, `llir_file`.
 fn compile_mvbc_to_llvmir(harness_paths: &HarnessPaths, test_plan: &TestPlan) -> anyhow::Result<()> {
-    todo!()
+    let mut cmd = Command::new(harness_paths.move_mv_llvm_compiler.to_str().expect("PathBuf"));
+    cmd.arg("-b");
+    cmd.arg(test_plan.mvbc_file.to_str().expect("PathBuf"));
+    cmd.arg("-o");
+    cmd.arg(test_plan.llir_file.to_str().expect("PathBuf"));
+    cmd.arg("-S");
+
+    let output = cmd.output().context("run move-mv-llvm-compiler failed")?;
+    if !output.status.success() {
+        anyhow::bail!("move-mv-llvm-compiler failed");
+    }
+
+    Ok(())
 }
 
 /// Copy actual LLVM IR, `llir_file`, to expected IR, `llir_file_expected`, if `PROMOTE_LLVM_IR` env var is set.
 fn maybe_promote_actual_llvmir_to_expected(test_plan: &TestPlan) -> anyhow::Result<()> {
-    todo!()
+    if std::env::var("PROMOTE_LLVM_IR").is_ok() {
+        std::fs::copy(test_plan.llir_file.as_path(), test_plan.llir_file_expected.as_path())?;
+    }
+
+    Ok(())
 }
 
 /// Compare `llir_file` to `llir_file_expected`.
@@ -100,5 +130,13 @@ fn maybe_promote_actual_llvmir_to_expected(test_plan: &TestPlan) -> anyhow::Resu
 /// If different, print a diff.
 fn compare_actual_llvmir_to_expected(test_plan: &TestPlan) -> anyhow::Result<()> {
     // todo print a diff with some existing crate - see what dada uses
-    todo!()
+
+    let file_actual = std::fs::read(test_plan.llir_file.as_path())?;
+    let file_expected = std::fs::read(test_plan.llir_file_expected.as_path())?;
+
+    if file_actual != file_expected {
+        anyhow::bail!("file actual is not equals expected");
+    }
+
+    Ok(())
 }
