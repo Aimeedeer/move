@@ -1,10 +1,11 @@
 //! Tests of compilation from MVIR to LLVM IR.
 //!
+//! - Create a test for every .mvir file in testdata/
 //! - Run `move-ir-compiler` to convert MVIR to MV bytecode.
 //! - Run `move-mv-llvm-compiler` to convert MV bytecode to LLVM IR.
 //! - Compare the actual IR to an existing expected IR.
 //!
-//! If the `APPROVE_LLVM_IR` env var is set, the actual IR is promoted to the
+//! If the `PROMOTE_LLVM_IR` env var is set, the actual IR is promoted to the
 //! expected IR.
 
 use std::path::{Path, PathBuf};
@@ -24,6 +25,11 @@ fn run_test_inner(test_path: &Path) -> anyhow::Result<()> {
     let harness_paths = get_harness_paths();
     let test_plan = get_test_plan(test_path);
 
+    if !harness_paths.move_ir_compiler.exists() {
+        // todo: can we build move-ir-compiler automatically?
+        anyhow::bail!("move-ir-compiler not built");
+    }
+
     compile_mvir_to_mvbc(&harness_paths, &test_plan)?;
     compile_mvbc_to_llvmir(&harness_paths, &test_plan)?;
     maybe_promote_actual_llvmir_to_expected(&test_plan)?;
@@ -42,7 +48,6 @@ fn get_harness_paths() -> HarnessPaths {
     // Cargo will tell us the location of move-mv-llvm-compiler.
     let move_mv_llvm_compiler = env!("CARGO_BIN_EXE_move-mv-llvm-compiler");
     let move_mv_llvm_compiler = PathBuf::from(move_mv_llvm_compiler);
-    eprintln!("{:?}", move_mv_llvm_compiler);
 
     // We have to guess where move-ir-compiler is
     let move_ir_compiler = if !cfg!(windows) {
@@ -130,11 +135,15 @@ fn maybe_promote_actual_llvmir_to_expected(test_plan: &TestPlan) -> anyhow::Resu
 ///
 /// If different, print a diff.
 fn compare_actual_llvmir_to_expected(test_plan: &TestPlan) -> anyhow::Result<()> {
+    if !test_plan.llir_file_expected.exists() {
+        anyhow::bail!("no expected.ll file");
+    }
+
     let file_actual = std::fs::read(test_plan.llir_file.as_path())?;
     let file_expected = std::fs::read(test_plan.llir_file_expected.as_path())?;
 
     if file_actual != file_expected {
-        anyhow::bail!("file actual is not equals expected");
+        anyhow::bail!("llvm IR actual does not equal expected");
     }
 
     let mut diff_msg = String::new();
@@ -155,7 +164,7 @@ fn compare_actual_llvmir_to_expected(test_plan: &TestPlan) -> anyhow::Result<()>
     }
 
     if !diff_msg.is_empty() {
-        anyhow::bail!(format!("file actual is not equals expected: \n\n{}", diff_msg));
+        anyhow::bail!(format!("llvm IR actual does not equal expected: \n\n{}", diff_msg));
     }
 
     Ok(())

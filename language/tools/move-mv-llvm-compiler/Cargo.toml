@@ -31,6 +31,9 @@ datatest-stable = "0.1.1"
 # make the move-ir-compiler available to the tests
 move-ir-compiler = { path = "../../move-ir-compiler" }
 
+[dev-dependencies]
+datatest-stable = "0.1.1"
+
 [features]
 default = []
 
