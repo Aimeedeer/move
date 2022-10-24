@@ -9,6 +9,7 @@
 
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use similar::{ChangeTag, TextDiff};
 use anyhow::Context;
 
 pub const TEST_DIR: &str = "tests/testdata";
@@ -129,13 +130,32 @@ fn maybe_promote_actual_llvmir_to_expected(test_plan: &TestPlan) -> anyhow::Resu
 ///
 /// If different, print a diff.
 fn compare_actual_llvmir_to_expected(test_plan: &TestPlan) -> anyhow::Result<()> {
-    // todo print a diff with some existing crate - see what dada uses
-
     let file_actual = std::fs::read(test_plan.llir_file.as_path())?;
     let file_expected = std::fs::read(test_plan.llir_file_expected.as_path())?;
 
     if file_actual != file_expected {
         anyhow::bail!("file actual is not equals expected");
+    }
+
+    let mut diff_msg = String::new();
+    let file_actual = std::fs::read_to_string(test_plan.llir_file.as_path())?;
+    let file_expected = std::fs::read_to_string(test_plan.llir_file_expected.as_path())?;
+
+    let diff = TextDiff::from_lines(&file_actual, &file_expected);
+    for change in diff.iter_all_changes() {
+        let sign = match change.tag() {
+            ChangeTag::Delete => Some("-"),
+            ChangeTag::Insert => Some("+"),
+            ChangeTag::Equal => None,
+        };
+
+        if let Some(sign) = sign {
+            diff_msg.push_str(&format!("{}{}", sign, change));
+        }
+    }
+
+    if !diff_msg.is_empty() {
+        anyhow::bail!(format!("file actual is not equals expected: \n\n{}", diff_msg));
     }
 
     Ok(())

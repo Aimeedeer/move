@@ -57,3 +57,4 @@ target-out-docker
 # Move LLVM compiler temp test files
 language/tools/move-mv-llvm-compiler/tests/testdata/*.actual.ll
 language/tools/move-mv-llvm-compiler/tests/testdata/*.mv
+*~
