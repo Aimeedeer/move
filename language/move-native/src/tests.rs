@@ -96,3 +96,79 @@ fn test_vec_with_bool() {
 
     unsafe { vector::destroy_empty(&ELEMENT_TYPE, move_vec) }
 }
+
+#[test]
+fn test_vec_with_vector() {
+    static INNER_ELEMENT_TYPE: MoveType = MoveType {
+        type_desc: TypeDesc::Bool,
+        type_info: TypeInfo { nothing: 0 },
+    };
+    
+    static VECTORTYPEINFO: MoveType = MoveType {
+        type_desc: TypeDesc::Vector,
+        type_info: TypeInfo {
+            vector: VectorTypeInfo {
+                element_type: &INNER_ELEMENT_TYPE,
+            }
+        },
+    };
+    
+    static OUTER_ELEMENT_TYPE: MoveType = MoveType {
+        type_desc: TypeDesc::Vector,
+        type_info: TypeInfo {
+            vector: VectorTypeInfo {
+                element_type: &VECTORTYPEINFO,
+            }
+        },
+    };
+
+    unsafe {
+        let mut move_vec = vector::empty(&OUTER_ELEMENT_TYPE);
+        assert_eq!(move_vec.length, 0);
+        assert_eq!(move_vec.capacity, 0);
+        
+        let move_vec_len = vector::length(&OUTER_ELEMENT_TYPE, &move_vec);
+        assert_eq!(move_vec_len, 0);
+
+        let mut new_element_vec = vector::empty(&INNER_ELEMENT_TYPE);
+
+        let mut new_element_inner_0 = true;
+        let new_element_inner_ptr_0 = &mut new_element_inner_0 as *mut _ as *mut AnyValue;
+        vector::push_back(&INNER_ELEMENT_TYPE, &mut new_element_vec, new_element_inner_ptr_0);
+
+        let mut new_element_inner_1 = false;
+        let new_element_inner_ptr_1 = &mut new_element_inner_1 as *mut _ as *mut AnyValue;
+        vector::push_back(&INNER_ELEMENT_TYPE, &mut new_element_vec, new_element_inner_ptr_1);
+        
+        let new_element_vec_len = vector::length(&INNER_ELEMENT_TYPE, &new_element_vec);
+        assert_eq!(new_element_vec_len, 2);
+
+        let new_element_vec_ptr = &mut new_element_vec as *mut _ as *mut AnyValue;
+        vector::push_back(&OUTER_ELEMENT_TYPE, &mut move_vec, new_element_vec_ptr);
+        assert_eq!(move_vec.length, 1);
+
+        // remove this moved value from current scope
+        disarm_drop_bomb(new_element_vec);
+        
+        let mut popped_element = vector::empty(&INNER_ELEMENT_TYPE);
+        let popped_element_ptr = &mut popped_element as *mut _ as *mut AnyValue;
+
+        vector::pop_back(&OUTER_ELEMENT_TYPE, &mut move_vec, popped_element_ptr);
+        assert_eq!(move_vec.length, 0);
+
+        let mut popped_element_inner_0: bool = true;
+        let popped_element_inner_ptr_0 = &mut popped_element_inner_0 as *mut _ as *mut AnyValue;
+        vector::pop_back(&INNER_ELEMENT_TYPE, &mut popped_element, popped_element_inner_ptr_0);
+        assert_eq!(popped_element_inner_0, false);
+
+        let mut popped_element_inner_1: bool = false;
+        let popped_element_inner_ptr_1 = &mut popped_element_inner_1 as *mut _ as *mut AnyValue;
+        vector::pop_back(&INNER_ELEMENT_TYPE, &mut popped_element, popped_element_inner_ptr_1);
+        assert_eq!(popped_element_inner_1, true);
+
+        assert_eq!(popped_element.length, 0);
+
+        vector::destroy_empty(&INNER_ELEMENT_TYPE, popped_element);
+        vector::destroy_empty(&OUTER_ELEMENT_TYPE, move_vec);
+    }
+}
