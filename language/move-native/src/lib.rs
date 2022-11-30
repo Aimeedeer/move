@@ -409,6 +409,7 @@ pub(crate) mod rt_types {
 
     #[repr(transparent)]
     #[derive(Debug)]
+    #[derive(PartialEq)]
     pub struct MoveSigner(pub MoveAddress);
 
     /// A Move address.
@@ -417,6 +418,7 @@ pub(crate) mod rt_types {
     /// differ from Move VM.
     #[repr(transparent)]
     #[derive(Debug)]
+    #[derive(PartialEq)]
     pub struct MoveAddress(pub [u8; target_defs::ACCOUNT_ADDRESS_LENGTH]);
 
     // Defined in std::type_name; not a primitive.
