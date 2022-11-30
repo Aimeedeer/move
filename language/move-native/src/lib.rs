@@ -578,7 +578,7 @@ mod std {
 
         #[export_name = "move_native_signer_borrow_address"]
         extern "C" fn borrow_address(s: &MoveSigner) -> &MoveAddress {
-            todo!()
+            &s.0
         }
     }
 

@@ -172,3 +172,8 @@ fn test_vec_with_vector() {
         vector::destroy_empty(&OUTER_ELEMENT_TYPE, move_vec);
     }
 }
+
+#[test]
+fn test_vec_with_vector() {
+
+}
