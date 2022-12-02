@@ -909,7 +909,7 @@ mod std {
 
                     if capacity != 0 {
                         let vec_byte_size = capacity.checked_mul(size).expect("overflow");
-                        let layout = alloc::alloc::Layout::from_size_align(size, alignment)
+                        let layout = alloc::alloc::Layout::from_size_align(vec_byte_size, alignment)
                             .expect("bad size or alignment");
                         alloc::alloc::dealloc(v.ptr, layout);
                     }

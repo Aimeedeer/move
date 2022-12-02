@@ -201,3 +201,85 @@ fn test_vec_with_signer() {
 
     unsafe { vector::destroy_empty(&ELEMENT_TYPE, move_vec) }
 }
+
+#[test]
+fn test_vec_with_struct() {
+    static STRUCT_FIELD_TYPE: MoveType = MoveType {
+        type_desc: TypeDesc::Bool,
+        type_info: TypeInfo { nothing: 0 }
+    };
+    
+    static STRUCT_FIELD_INFO: [StructFieldInfo; 2] = [
+        StructFieldInfo {
+            type_: STRUCT_FIELD_TYPE,
+            offset: 0,
+        },
+        StructFieldInfo {
+            type_: STRUCT_FIELD_TYPE,
+            offset: 1,
+        },
+    ];
+
+    static ELEMENT_TYPE: MoveType = MoveType {
+        type_desc: TypeDesc::Struct,
+        type_info: TypeInfo {
+            struct_: StructTypeInfo {
+                field_array_ptr: &STRUCT_FIELD_INFO[0],
+                field_array_len: 2,
+                size: mem::size_of::<SimpleStruct>() as u64,
+                alignment: mem::align_of::<SimpleStruct>() as u64,
+            }
+        },
+    };
+
+    let mut move_vec = vector::empty(&ELEMENT_TYPE);
+    assert_eq!(move_vec.length, 0);
+    assert_eq!(move_vec.capacity, 0);
+
+    let move_vec_len = unsafe { vector::length(&ELEMENT_TYPE, &move_vec) };
+    assert_eq!(move_vec_len, 0);
+    
+    #[repr(C)]
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    struct SimpleStruct {
+        is_black: bool,
+        is_white: bool,
+    };
+
+    let mut new_element: SimpleStruct = SimpleStruct {
+        is_black: true,
+        is_white: false,
+    };
+    let new_element_ptr = &mut new_element as *mut _ as *mut AnyValue;
+
+    unsafe { vector::push_back(&ELEMENT_TYPE, &mut move_vec, new_element_ptr) }
+    assert_eq!(move_vec.length, 1);
+
+    let mut popped_element: SimpleStruct = SimpleStruct {
+        is_black: false,
+        is_white: true,
+    };
+    let popped_element_ptr = &mut popped_element as *mut _ as *mut AnyValue;
+
+    /*
+    unsafe {
+        let field_ptr_0 = &STRUCT_FIELD_INFO[0] as *const _ as *const u8;
+        let field_ptr_1 = &STRUCT_FIELD_INFO[1] as *const _ as *const u8;
+
+        let struct_ptr = &ELEMENT_TYPE.type_info.struct_ as *const _ as *const u8;
+        assert_eq!(struct_ptr.offset_from(field_ptr_0), 1);
+}
+    */
+
+    unsafe { vector::pop_back(&ELEMENT_TYPE, &mut move_vec, popped_element_ptr) };
+    assert_eq!(move_vec.length, 0);
+    assert_eq!(
+        popped_element,
+        SimpleStruct {
+            is_black: true,
+            is_white: false,
+        }
+    );
+
+    unsafe { vector::destroy_empty(&ELEMENT_TYPE, move_vec) }
+}
