@@ -261,16 +261,6 @@ fn test_vec_with_struct() {
     };
     let popped_element_ptr = &mut popped_element as *mut _ as *mut AnyValue;
 
-    /*
-    unsafe {
-        let field_ptr_0 = &STRUCT_FIELD_INFO[0] as *const _ as *const u8;
-        let field_ptr_1 = &STRUCT_FIELD_INFO[1] as *const _ as *const u8;
-
-        let struct_ptr = &ELEMENT_TYPE.type_info.struct_ as *const _ as *const u8;
-        assert_eq!(struct_ptr.offset_from(field_ptr_0), 1);
-}
-    */
-
     unsafe { vector::pop_back(&ELEMENT_TYPE, &mut move_vec, popped_element_ptr) };
     assert_eq!(move_vec.length, 0);
     assert_eq!(
